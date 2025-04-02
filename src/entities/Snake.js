@@ -5,22 +5,34 @@ export class Snake {
         this.dy = 0;
         this.nextDx = 0;
         this.nextDy = 0;
+        this.growing = false;
+        console.log('Snake initialized at:', startX, startY);
     }
 
-    move(head) {
-        // Apply buffered direction change if not moving into self
-        if ((this.nextDx !== 0 || this.nextDy !== 0) && 
-            !(this.nextDx === -this.dx && this.nextDy === -this.dy)) {
+    move(nextX, nextY) {
+        // Apply buffered direction change
+        if (this.nextDx !== 0 || this.nextDy !== 0) {
             this.dx = this.nextDx;
             this.dy = this.nextDy;
-            this.nextDx = 0;
-            this.nextDy = 0;
+            console.log('Applied buffered direction:', this.dx, this.dy);
         }
-        this.segments.unshift(head);
+        
+        // Add new head position
+        this.segments.unshift({ x: nextX, y: nextY });
+        console.log('Added new head at:', nextX, nextY);
+        
+        // Remove tail unless we're growing
+        if (!this.growing) {
+            this.segments.pop();
+        } else {
+            this.growing = false;
+            console.log('Snake grew! New length:', this.segments.length);
+        }
     }
 
-    removeTail() {
-        return this.segments.pop();
+    grow() {
+        this.growing = true;
+        console.log('Snake will grow on next move');
     }
 
     getHead() {
@@ -35,16 +47,29 @@ export class Snake {
             return false;
         }
 
-        // Set the direction
+        // Set the next direction to be applied on the next move
         this.nextDx = dx;
         this.nextDy = dy;
+        console.log('Direction buffered:', dx, dy);
         
-        // Return true if direction was set
+        // Start moving if we're not already
+        if (this.dx === 0 && this.dy === 0) {
+            this.dx = dx;
+            this.dy = dy;
+            console.log('Initial direction set:', dx, dy);
+        }
+        
         return true;
     }
 
     checkCollision(x, y) {
-        return this.segments.some(segment => segment.x === x && segment.y === y);
+        return this.segments.some((segment, index) => {
+            // Skip checking the tail when moving
+            if (this.dx !== 0 || this.dy !== 0) {
+                if (index === this.segments.length - 1) return false;
+            }
+            return segment.x === x && segment.y === y;
+        });
     }
 
     reset(startX, startY) {
@@ -53,5 +78,7 @@ export class Snake {
         this.dy = 0;
         this.nextDx = 0;
         this.nextDy = 0;
+        this.growing = false;
+        console.log('Snake reset to:', startX, startY);
     }
 }

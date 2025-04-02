@@ -1,4 +1,4 @@
-import { GRID_SIZE, GAME_SPEED, POWER_UP_SPAWN_CHANCE } from './config.js';
+import { GRID_SIZE, GAME_SPEED, POWER_UP_SPAWN_CHANCE, FOOD_TYPES } from './config.js';
 import { Snake } from './entities/Snake.js';
 import { Food } from './entities/Food.js';
 import { PowerUp } from './entities/PowerUp.js';
@@ -6,6 +6,7 @@ import { Renderer } from './renderer.js';
 
 export class Game {
     constructor(canvas, scoreElement, gameOverElement) {
+        console.log('Game constructor called');
         this.canvas = canvas;
         this.scoreElement = scoreElement;
         this.gameOverElement = gameOverElement;
@@ -28,15 +29,111 @@ export class Game {
         };
         this.activeTimers = {};
 
+        // Generate initial food before setting up event listeners
+        console.log('Generating initial food, FOOD_TYPES available:', FOOD_TYPES);
+        this.generateNewFood();
+        
         this.setupEventListeners();
-        this.generateNewFood(); // Generate initial food
-        this.draw(); // Initial draw
+        
+        // Initial draw to show the game state
+        console.log('Performing initial draw');
+        this.draw();
+    }
+
+    update() {
+        if (!this.isRunning || this.isPaused) {
+            console.log('Game not running or paused');
+            return;
+        }
+        
+        // Don't update if snake isn't moving
+        if (this.snake.dx === 0 && this.snake.dy === 0) {
+            console.log('Snake not moving yet');
+            return;
+        }
+        
+        // Get next position
+        let nextX = this.snake.getHead().x + this.snake.dx;
+        let nextY = this.snake.getHead().y + this.snake.dy;
+
+        console.log('Snake moving to:', nextX, nextY, 'with direction:', this.snake.dx, this.snake.dy);
+
+        // Wall collision with ghost mode check
+        if (!this.activeEffects.ghost) {
+            if (nextX < 0 || nextX >= this.tileCount || nextY < 0 || nextY >= this.tileCount) {
+                console.log('Wall collision detected');
+                this.gameOver();
+                return;
+            }
+        } else {
+            // Wrap around with ghost mode
+            if (nextX < 0) nextX = this.tileCount - 1;
+            if (nextX >= this.tileCount) nextX = 0;
+            if (nextY < 0) nextY = this.tileCount - 1;
+            if (nextY >= this.tileCount) nextY = 0;
+        }
+
+        // Self collision with shield check
+        if (!this.activeEffects.shield && this.snake.checkCollision(nextX, nextY)) {
+            console.log('Self collision detected');
+            this.gameOver();
+            return;
+        }
+
+        // Move snake
+        this.snake.move(nextX, nextY);
+
+        // Food collision
+        const collidedFood = this.food.checkCollision(nextX, nextY);
+        if (collidedFood) {
+            console.log('Food collision detected');
+            // Add points based on food type
+            this.score += this.activeEffects.doublePoints ? collidedFood.type.points * 2 : collidedFood.type.points;
+            this.scoreElement.textContent = this.score;
+            
+            // Grow snake
+            this.snake.grow();
+            
+            // Generate new food if all current food is eaten
+            if (this.food.foods.length === 0) {
+                this.generateNewFood();
+            }
+        }
+
+        // Update existing food timers
+        if (this.food.update()) {
+            this.generateNewFood();
+        }
+
+        // Power-up collision and update
+        if (this.powerUp.checkCollision(nextX, nextY)) {
+            this.powerUp.collect(this);
+        }
+
+        // Randomly generate power-up
+        if (!this.powerUp.active && Math.random() < POWER_UP_SPAWN_CHANCE) {
+            this.generateNewPowerUp();
+        }
+
+        this.renderer.updateAnimation();
+    }
+
+    draw() {
+        console.log('Draw called, current foods:', this.food.foods);
+        this.renderer.clear();
+        this.renderer.drawSnake(this.snake, this.activeEffects);
+        this.renderer.drawFood(this.food);
+        this.renderer.drawPowerUp(this.powerUp);
+        
+        if (this.isPaused) {
+            this.renderer.drawPauseOverlay();
+        }
     }
 
     setupEventListeners() {
         document.addEventListener('keydown', (e) => {
             if (this.gameOverElement.style.display === 'block' && e.code === 'Space') {
-                this.reset();
+                this.start();
                 return;
             }
 
@@ -70,125 +167,53 @@ export class Game {
                     break;
             }
 
-            // Start game on first valid direction input
+            // Start game on first valid direction input if not already running
             if (directionSet && !this.isRunning) {
-                this.isRunning = true;
+                console.log('Starting game on first direction input');
                 this.start();
             }
         });
     }
 
     start() {
+        if (this.isRunning) {
+            console.log('Game already running');
+            return;
+        }
+        
+        console.log('Starting game');
+        this.isRunning = true;
+        this.gameOverElement.style.display = 'none';
+        
+        // Reset game state
+        this.score = 0;
+        this.scoreElement.textContent = '0';
+        this.speed = GAME_SPEED;
+        this.snake.reset(10, 10);
+        
+        // Clear existing food and generate new
+        this.food.foods = [];
+        this.generateNewFood();
+        
+        // Start game loop
         if (this.gameLoopInterval) {
+            console.log('Clearing existing game loop');
             clearInterval(this.gameLoopInterval);
         }
-        this.gameLoopInterval = setInterval(() => this.gameLoop(), this.speed);
-    }
-
-    gameLoop() {
-        if (!this.isPaused && this.isRunning) {
+        
+        console.log('Starting game loop with speed:', this.speed);
+        this.gameLoopInterval = setInterval(() => {
             this.update();
             this.draw();
-        }
-    }
-
-    update() {
-        if (!this.isRunning || this.isPaused) return;  
-        // Get next position
-        let nextX = this.snake.getHead().x + this.snake.dx;
-        let nextY = this.snake.getHead().y + this.snake.dy;
-
-        // Wall collision with ghost mode check
-        if (!this.activeEffects.ghost) {
-            if (nextX < 0 || nextX >= this.tileCount || nextY < 0 || nextY >= this.tileCount) {
-                this.gameOver();
-                return;
-            }
-        } else {
-            // Wrap around with ghost mode
-            if (nextX < 0) nextX = this.tileCount - 1;
-            if (nextX >= this.tileCount) nextX = 0;
-            if (nextY < 0) nextY = this.tileCount - 1;
-            if (nextY >= this.tileCount) nextY = 0;
-        }
-
-        const head = { x: nextX, y: nextY };
-
-        // Self collision check (only if snake has more than 1 segment)
-        if (!this.activeEffects.shield && this.snake.segments.length > 1) {
-            // Check against all segments except the tail (which will move)
-            const willCollide = this.snake.segments.slice(0, -1).some(segment => 
-                segment.x === head.x && segment.y === head.y
-            );
-            if (willCollide) {
-                this.gameOver();
-                return;
-            }
-        }
-
-        // Move snake
-        this.snake.move(head);
-
-        // Food collision
-        if (this.food.checkCollision(head.x, head.y)) {
-            const points = this.food.type.points * (this.activeEffects.doublePoints ? 2 : 1);
-            this.score += points;
-            this.scoreElement.textContent = this.score;
-            this.generateNewFood();
-        } else {
-            this.snake.removeTail();
-        }
-
-        // Power-up collision
-        if (this.powerUp.checkCollision(head.x, head.y)) {
-            this.powerUp.collect(this);
-            if (Math.random() < 0.2) {
-                this.generateNewPowerUp();
-            }
-        }
-
-        // Update food timer
-        if (this.food.update()) {
-            this.generateNewFood();
-        }
-
-        // Randomly generate power-up
-        if (!this.powerUp.active && Math.random() < POWER_UP_SPAWN_CHANCE) {
-            this.generateNewPowerUp();
-        }
-
-        this.renderer.updateAnimation();
-    }
-
-    draw() {
-        this.renderer.clear();
-        this.renderer.drawSnake(this.snake, this.activeEffects);
-        this.renderer.drawFood(this.food);
-        this.renderer.drawPowerUp(this.powerUp);
-        this.renderer.drawActiveEffects(this.activeEffects);
-    }
-
-    generateNewFood() {
-        do {
-            this.food.generate();
-        } while (
-            this.snake.checkCollision(this.food.x, this.food.y) ||
-            (this.powerUp.active && this.powerUp.checkCollision(this.food.x, this.food.y))
-        );
-    }
-
-    generateNewPowerUp() {
-        do {
-            this.powerUp.generate();
-        } while (
-            this.snake.checkCollision(this.powerUp.active.x, this.powerUp.active.y) ||
-            this.food.checkCollision(this.powerUp.active.x, this.powerUp.active.y)
-        );
+        }, this.speed);
     }
 
     gameOver() {
+        console.log('Game Over');
         this.isRunning = false;
         clearInterval(this.gameLoopInterval);
+        this.gameLoopInterval = null;
+        
         // Clear all power-up effects
         for (const timer of Object.values(this.activeTimers)) {
             clearTimeout(timer);
@@ -202,27 +227,46 @@ export class Game {
         this.gameOverElement.style.display = 'block';
     }
 
-    reset() {
-        this.snake.reset(10, 10);
-        this.generateNewFood();
-        this.powerUp.active = null;
-        this.score = 0;
-        this.speed = GAME_SPEED;
-        this.isRunning = false;
-        this.scoreElement.textContent = this.score;
-        this.gameOverElement.style.display = 'none';
-        this.draw();
-    }
-
     pause() {
-        if (!this.isRunning) return;
+        if (!this.isRunning || this.isPaused) return;
         this.isPaused = true;
-        this.renderer.drawPauseOverlay();
+        this.draw();
     }
 
     resume() {
-        if (!this.isRunning) return;
+        if (!this.isRunning || !this.isPaused) return;
         this.isPaused = false;
         this.draw();
+    }
+
+    generateNewFood() {
+        console.log('generateNewFood called');
+        if (!FOOD_TYPES || FOOD_TYPES.length === 0) {
+            console.error('No FOOD_TYPES available in generateNewFood!');
+            return;
+        }
+        
+        // Clear existing foods
+        this.food.foods = [];
+        
+        // Generate initial food
+        this.food.generate();
+        
+        // Chance to generate additional foods
+        for (let i = 0; i < 2 && this.food.foods.length < 3; i++) {  // Up to 2 additional foods (3 total max)
+            if (Math.random() < 0.3) {  // 30% chance for each additional food
+                this.food.generate();
+            }
+        }
+        console.log('Food generation complete, total foods:', this.food.foods?.length || 0);
+    }
+
+    generateNewPowerUp() {
+        do {
+            this.powerUp.generate();
+        } while (
+            this.snake.checkCollision(this.powerUp.active.x, this.powerUp.active.y) ||
+            this.food.hasCollision(this.powerUp.active.x, this.powerUp.active.y)
+        );
     }
 }

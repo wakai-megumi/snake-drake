@@ -52,8 +52,14 @@
             const scoreElement = document.getElementById('score');
             const gameOverElement = document.getElementById('gameOver');
             
-            const game = new Game(canvas, scoreElement, gameOverElement);
-            game.start();
+            try {
+                const game = new Game(canvas, scoreElement, gameOverElement);
+                console.log('Game initialized successfully');
+            } catch (error) {
+                console.error('Error initializing game:', error);
+                gameOverElement.textContent = 'Error initializing game. Please refresh the page.';
+                gameOverElement.style.display = 'block';
+            }
         });
     </script>
 </body>
