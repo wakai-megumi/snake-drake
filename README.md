@@ -1,74 +1,34 @@
-# Modern Snake Game
+# Snake Drake - Browser Extension
 
-A modern implementation of the classic Snake game with additional features and power-ups.
+A fun snake game with emojis and power-ups, now available as a browser extension!
 
 ## Features
+- Classic snake gameplay with modern graphics
+- Emoji food items with different point values
+- Power-ups that modify gameplay
+- Score tracking
+- Pause/Resume functionality
 
-- 🐍 Smooth snake movement with arrow key controls
-- 🍎 Multiple food types with different points:
-  - Red (10 points)
-  - Yellow (20 points)
-  - Purple (30 points)
-- ⚡ Power-ups:
-  - Speed Boost (Blue)
-  - Ghost Mode (White) - Pass through walls
-  - Double Points (Orange)
-  - Shield (Cyan) - Protect from self-collision
-- 🎮 Game Controls:
-  - Arrow Keys: Move snake
-  - Enter: Pause/Resume
-  - Space: Restart after game over
-- 🎨 Modern UI:
-  - Animated grid background
-  - Score display
-  - Game over screen
-  - Pause overlay
-  - Visual effects for power-ups
+## Installation Instructions
 
-## Getting Started
+### Chrome/Edge:
+1. Download or clone this repository
+2. Open Chrome/Edge and go to `chrome://extensions` or `edge://extensions`
+3. Enable "Developer mode" in the top right
+4. Click "Load unpacked" and select the game directory
+5. The extension icon should appear in your browser toolbar
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/snake-game.git
-```
+### Playing the Game
+1. Click the extension icon to open the game
+2. Use arrow keys to control the snake
+3. Collect food items to grow and score points
+4. Press Enter to pause/resume
+5. Press Space to restart after game over
 
-2. Open the project directory:
-```bash
-cd snake-game
-```
-
-3. Start a local server (using Python or any other method):
-```bash
-python -m http.server 8000
-```
-
-4. Open your browser and navigate to:
-```
-http://localhost:8000
-```
-
-## Technologies Used
-
-- HTML5 Canvas
-- Modern JavaScript (ES6+)
-- CSS3
-
-## Project Structure
-
-```
-snake-game/
-├── src/
-│   ├── entities/
-│   │   ├── Snake.js
-│   │   ├── Food.js
-│   │   └── PowerUp.js
-│   ├── game.js
-│   ├── renderer.js
-│   └── config.js
-├── index.html
-└── README.md
-```
+## Development
+- Version 2.0.0 includes fixed snake movement and food generation
+- Built using vanilla JavaScript and HTML5 Canvas
+- No external dependencies required
 
 ## License
-
-MIT License - feel free to use this project for learning and development purposes.
+MIT License
